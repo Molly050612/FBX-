@@ -1,0 +1,1154 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>物流报价系统 v5.1</title>
+    <!-- ============ 配置区 ============ -->
+    <script>
+        // 把下面这行改成你自己的GitHub Pages地址
+        const DATA_URL = 'https://你的用户名.github.io/logistics-app/data.json';
+        // 如果不想用GitHub，设为 null 则使用嵌入数据
+        const EMBEDDED_DATA = null;
+    </script>
+    <!-- ============================ -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js">
+    </script>
+    <style>
+        :root {
+            --primary: #1a73e8;
+            --primary-dark: #1557b0;
+            --danger: #d93025;
+            --success: #188038;
+            --warning: #e37400;
+            --bg: #f0f2f5;
+            --card-bg: #ffffff;
+            --border: #dadce0;
+            --text: #202124;
+            --text-secondary: #5f6368;
+            --shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+            --radius: 8px;
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f0f2f5;
+            color: var(--text);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+        .header {
+            background: var(--card-bg);
+            border-bottom: 1px solid var(--border);
+            padding: 0 20px;
+            height: 56px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: var(--shadow);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .header h1 {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--primary);
+        }
+        .header h1::before {
+            content: '🚚';
+            margin-right: 8px;
+        }
+        .header-actions {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        .role-badge {
+            font-size: 0.75rem;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-weight: 500;
+        }
+        .role-badge.admin {
+            background: #fce8e6;
+            color: #c5221f;
+        }
+        .role-badge.staff {
+            background: #e8f0fe;
+            color: #1967d2;
+        }
+        .btn {
+            padding: 8px 14px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 500;
+            background: var(--card-bg);
+            color: var(--text);
+            white-space: nowrap;
+            transition: all 0.15s;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .btn:hover {
+            background: #f1f3f4;
+        }
+        .btn-primary {
+            background: var(--primary);
+            color: #fff;
+            border-color: var(--primary);
+        }
+        .btn-primary:hover {
+            background: var(--primary-dark);
+        }
+        .btn-sm {
+            padding: 5px 10px;
+            font-size: 0.78rem;
+        }
+        .btn-xs {
+            padding: 2px 8px;
+            font-size: 0.73rem;
+            border-radius: 4px;
+        }
+        .btn-danger {
+            background: var(--danger);
+            color: #fff;
+            border-color: var(--danger);
+        }
+        .btn-warning {
+            background: var(--warning);
+            color: #fff;
+            border-color: var(--warning);
+        }
+        .main-container {
+            display: flex;
+            gap: 20px;
+            padding: 20px 24px;
+            max-width: 1500px;
+            margin: 0 auto;
+        }
+        .left-panel {
+            flex: 1;
+            min-width: 480px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+        .right-panel {
+            width: 420px;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+        .card {
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+        }
+        .card-header {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+            font-weight: 600;
+            font-size: 0.9rem;
+            background: #fafafa;
+        }
+        .card-body {
+            padding: 14px 16px;
+        }
+        .card-body.compact {
+            padding: 10px 14px;
+        }
+        .form-group {
+            margin-bottom: 10px;
+        }
+        .form-label {
+            display: block;
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+        }
+        .form-row {
+            display: flex;
+            gap: 10px;
+        }
+        .form-row .form-group {
+            flex: 1;
+        }
+        select,
+        input[type="text"],
+        input[type="number"],
+        input[type="password"],
+        textarea {
+            width: 100%;
+            padding: 8px 10px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 0.85rem;
+            background: #fff;
+        }
+        textarea {
+            resize: vertical;
+            min-height: 60px;
+        }
+        select:focus,
+        input:focus,
+        textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.15);
+        }
+        .result-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 7px 0;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 0.85rem;
+        }
+        .result-item:last-child {
+            border-bottom: none;
+        }
+        .result-label {
+            color: var(--text-secondary);
+        }
+        .result-value {
+            font-weight: 600;
+        }
+        .divider {
+            border-top: 2px dashed var(--border);
+            margin: 10px 0;
+        }
+        .remark-box {
+            background: #fffde7;
+            border: 1px solid #fdd835;
+            border-radius: 6px;
+            padding: 10px 14px;
+            font-size: 0.82rem;
+            color: #5d4037;
+            margin-top: 8px;
+            white-space: pre-wrap;
+        }
+        .analysis-box {
+            background: #f3f8ff;
+            border: 1px solid #90caf9;
+            border-radius: 6px;
+            padding: 10px 14px;
+            font-size: 0.82rem;
+            margin-top: 8px;
+        }
+        .analysis-box .option-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 4px 0;
+        }
+        .analysis-box .winner {
+            font-weight: 700;
+            color: #1565c0;
+        }
+        .analysis-box .loser {
+            color: #9e9e9e;
+            text-decoration: line-through;
+        }
+        .highlight-box {
+            background: #e8f5e9;
+            border: 1px solid #a5d6a7;
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin-top: 8px;
+        }
+        .highlight-box .final-price {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #2e7d32;
+        }
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 200;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal {
+            background: #fff;
+            border-radius: 12px;
+            width: 700px;
+            max-width: 95vw;
+            max-height: 85vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+        .modal.wide {
+            width: 950px;
+        }
+        .modal-header {
+            padding: 14px 18px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 600;
+        }
+        .modal-body {
+            padding: 18px;
+        }
+        .modal-footer {
+            padding: 12px 18px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+        }
+        .modal-close {
+            cursor: pointer;
+            background: none;
+            border: none;
+            font-size: 1.4rem;
+            color: var(--text-secondary);
+            line-height: 1;
+        }
+        .toast {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #323232;
+            color: #fff;
+            padding: 12px 24px;
+            border-radius: 24px;
+            font-size: 0.85rem;
+            z-index: 300;
+            animation: toastIn 0.3s ease;
+        }
+        @keyframes toastIn {
+            from {
+                opacity: 0;
+                transform: translateX(-50%) translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(-50%) translateY(0);
+            }
+        }
+        .mini-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.76rem;
+        }
+        .mini-table th,
+        .mini-table td {
+            padding: 4px 5px;
+            border: 1px solid var(--border);
+            text-align: center;
+        }
+        .mini-table th {
+            background: #f5f5f5;
+            font-weight: 500;
+            font-size: 0.72rem;
+        }
+        .mini-table input {
+            width: 55px;
+            text-align: center;
+            padding: 2px 3px;
+            font-size: 0.73rem;
+        }
+        .tab-nav {
+            display: flex;
+            border-bottom: 2px solid var(--border);
+            margin-bottom: 10px;
+        }
+        .tab-btn {
+            padding: 7px 16px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 0.82rem;
+            color: var(--text-secondary);
+            border-bottom: 2px solid transparent;
+            margin-bottom: -2px;
+            transition: all 0.15s;
+        }
+        .tab-btn.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+        .progress-bar {
+            height: 6px;
+            background: #e0e0e0;
+            border-radius: 3px;
+            margin-top: 6px;
+            overflow: hidden;
+        }
+        .progress-bar .fill {
+            height: 100%;
+            background: var(--primary);
+            border-radius: 3px;
+            transition: width 0.3s;
+        }
+        .section-title {
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: var(--primary);
+            margin: 10px 0 6px 0;
+            padding-bottom: 5px;
+            border-bottom: 1px solid var(--border);
+        }
+        .sync-status {
+            font-size: 0.73rem;
+            padding: 2px 8px;
+            border-radius: 10px;
+        }
+        .sync-status.synced {
+            background: #e6f4ea;
+            color: #137333;
+        }
+        .sync-status.syncing {
+            background: #fef7e0;
+            color: #e37400;
+        }
+        .sync-status.error {
+            background: #fce8e6;
+            color: #c5221f;
+        }
+        @media (max-width: 1000px) {
+            .main-container {
+                flex-direction: column;
+                padding: 12px;
+            }
+            .left-panel {
+                min-width: auto;
+            }
+            .right-panel {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>物流报价系统 v5.1</h1>
+        <div class="header-actions">
+            <span id="syncStatus" class="sync-status syncing">🔄 同步中...</span>
+            <span id="roleBadge" class="role-badge staff">🔒 业务员</span>
+            <button class="btn btn-sm" id="adminBtn" onclick="showAdminLogin()">🔑 管理员</button>
+            <button class="btn btn-sm btn-primary" onclick="calculateAll()">📐 开始报价</button>
+        </div>
+    </div>
+
+    <div class="main-container">
+        <div class="left-panel">
+            <div class="card">
+                <div class="card-header">📦 货物基本信息</div>
+                <div class="card-body">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">方数 (CBM)</label>
+                            <input type="number" id="cbm" step="0.01" min="0" placeholder="如 2.24" oninput="autoCalc()">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">实重 (KG)</label>
+                            <input type="number" id="weight" step="0.1" min="0" placeholder="如 710" oninput="autoCalc()">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">邮编 (ZIP Code)</label>
+                            <input type="text" id="zipcode" placeholder="如 91744" oninput="autoCalc()">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">交货仓库</label>
+                            <select id="warehouse" onchange="autoCalc()">
+                                <option value="HCM">HCM - 胡志明</option>
+                                <option value="HPH">HPH - 海防</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">选择周次</label>
+                            <select id="weekSelect" onchange="autoCalc()">
+                                <option value="">加载中...</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">地址性质</label>
+                            <select id="addressType" onchange="autoCalc()">
+                                <option value="commercial_dock">商业地址带卸货平台</option>
+                                <option value="commercial_nodock">商业地址不带卸货平台（需尾板）</option>
+                                <option value="residential">住宅地址</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">客户类型</label>
+                            <select id="clientType" onchange="autoCalc()">
+                                <option value="direct">直客</option>
+                                <option value="peer">同行</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">是否限制地址</label>
+                            <select id="isRestricted" onchange="autoCalc()">
+                                <option value="no">否</option>
+                                <option value="yes">是</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">尾端是否进监管仓</label>
+                            <select id="useBonded" onchange="autoCalc()">
+                                <option value="no">否</option>
+                                <option value="yes">是</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">货物类型</label>
+                            <select id="cargoType" onchange="onCargoTypeChange()">
+                                <option value="standard">标准纸箱货物</option>
+                                <option value="oversize">超尺寸货物</option>
+                                <option value="overweight">超重货物</option>
+                                <option value="pallet">托盘货/木箱货</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div id="palletDetailArea" style="display:none;margin-top:8px;">
+                        <div class="form-label">📐 货物明细（长cm × 宽cm × 高cm × 数量）</div>
+                        <div id="palletItems">
+                            <div class="form-row" style="margin-bottom:4px;">
+                                <input type="number" placeholder="长cm" class="pallet-l" step="0.1" style="flex:1;">
+                                <input type="number" placeholder="宽cm" class="pallet-w" step="0.1" style="flex:1;">
+                                <input type="number" placeholder="高cm" class="pallet-h" step="0.1" style="flex:1;">
+                                <input type="number" placeholder="数量" class="pallet-qty" value="1" min="1" style="flex:0.8;">
+                            </div>
+                        </div>
+                        <button class="btn btn-sm" onclick="addPalletRow()" style="margin-top:4px;">+ 添加货物</button>
+                        <div class="form-row" style="margin-top:8px;">
+                            <div class="form-group">
+                                <label class="form-label">是否允许堆叠/旋转</label>
+                                <select id="allowStack"><option value="yes">是</option><option value="no">否</option></select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="card" id="oversizeCard" style="display:none;">
+                <div class="card-header">⚠️ 超尺寸/超重货物明细</div>
+                <div class="card-body">
+                    <div id="oversizeItems">
+                        <div class="form-row" style="margin-bottom:6px;">
+                            <input type="number" placeholder="长M" step="0.01" class="os-l" style="flex:1;">
+                            <input type="number" placeholder="宽M" step="0.01" class="os-w" style="flex:1;">
+                            <input type="number" placeholder="高M" step="0.01" class="os-h" style="flex:1;">
+                            <input type="number" placeholder="实重KG" step="0.1" class="os-wt" style="flex:1;">
+                            <input type="number" placeholder="数量" value="1" class="os-qty" style="flex:0.8;">
+                        </div>
+                    </div>
+                    <button class="btn btn-sm" onclick="addOversizeRow()">+ 添加超规货物</button>
+                </div>
+            </div>
+            <div class="card" id="adminSection" style="display:none;">
+                <div class="card-header">🛠 管理员操作</div>
+                <div class="card-body" style="display:flex;gap:8px;flex-wrap:wrap;">
+                    <button class="btn btn-sm" onclick="openModal('configModal')">⚙️ 配置中心</button>
+                    <button class="btn btn-sm" onclick="openModal('rateModal')">📊 盈仓报价表</button>
+                    <button class="btn btn-sm" onclick="openModal('freightModal')">📅 头程周次表</button>
+                    <button class="btn btn-sm btn-warning" onclick="exportAllData()">📥 导出全部数据</button>
+                    <button class="btn btn-sm btn-warning" onclick="document.getElementById('importDataInput').click()">📤 导入全部数据</button>
+                    <input type="file" id="importDataInput" accept=".json" style="display:none;" onchange="importAllData(event)">
+                    <button class="btn btn-sm btn-warning" onclick="exportForGitHub()">🚀 导出用于GitHub同步</button>
+                    <button class="btn btn-sm" onclick="openModal('pwdModal')">🔒 修改密码</button>
+                    <button class="btn btn-sm" onclick="logoutAdmin()">👤 退出</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="right-panel">
+            <div class="card">
+                <div class="card-header">📋 报价结果</div>
+                <div class="card-body compact" id="resultBody">
+                    <p style="color:var(--text-secondary);text-align:center;padding:20px 0;">👆 填写信息后点击报价</p>
+                </div>
+            </div>
+            <div class="card" id="analysisCard" style="display:none;">
+                <div class="card-header">🔍 方案对比分析</div>
+                <div class="card-body compact" id="analysisBody"></div>
+            </div>
+            <div class="card">
+                <div class="card-header">⏱️ 预估时效</div>
+                <div class="card-body compact" id="transitTime"><p style="color:var(--text-secondary);">--</p></div>
+            </div>
+            <div class="card">
+                <div class="card-header">📝 备注说明</div>
+                <div class="card-body compact" id="remarkArea"><p style="color:var(--text-secondary);">--</p></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 弹窗区域保持不变，与v5.0相同 -->
+    <div class="modal-overlay" id="loginModal" style="display:none;">
+        <div class="modal" style="width:400px;">
+            <div class="modal-header">🔑 管理员登录 <button class="modal-close" onclick="closeModal('loginModal')">&times;</button></div>
+            <div class="modal-body">
+                <div class="form-group"><label class="form-label">请输入管理员密码</label><input type="password" id="loginPwd" onkeydown="if(event.key==='Enter')adminLogin()"></div>
+                <p id="loginError" style="color:#d93025;font-size:0.8rem;display:none;">密码错误</p>
+            </div>
+            <div class="modal-footer"><button class="btn" onclick="closeModal('loginModal')">取消</button><button class="btn btn-primary" onclick="adminLogin()">登录</button></div>
+        </div>
+    </div>
+    <div class="modal-overlay" id="pwdModal" style="display:none;">
+        <div class="modal" style="width:420px;">
+            <div class="modal-header">🔒 修改密码 <button class="modal-close" onclick="closeModal('pwdModal')">&times;</button></div>
+            <div class="modal-body">
+                <div class="form-group"><label class="form-label">当前密码</label><input type="password" id="oldPwd"></div>
+                <div class="form-group"><label class="form-label">新密码</label><input type="password" id="newPwd"></div>
+                <div class="form-group"><label class="form-label">确认新密码</label><input type="password" id="confirmPwd"></div>
+                <p id="pwdError" style="color:#d93025;font-size:0.8rem;display:none;"></p>
+            </div>
+            <div class="modal-footer"><button class="btn" onclick="closeModal('pwdModal')">取消</button><button class="btn btn-primary" onclick="changePassword()">确认</button></div>
+        </div>
+    </div>
+    <div class="modal-overlay" id="configModal" style="display:none;">
+        <div class="modal" style="width:680px;">
+            <div class="modal-header">⚙️ 配置中心 <button class="modal-close" onclick="closeModal('configModal')">&times;</button></div>
+            <div class="modal-body">
+                <div class="section-title">💱 汇率与固定附加费 (RMB单价)</div>
+                <div class="form-row"><div class="form-group"><label class="form-label">汇率</label><input type="number" id="cfg_exRate" step="0.01" value="7"></div><div class="form-group"><label class="form-label">退运保-CBM</label><input type="number" id="cfg_insCbm" step="0.01" value="200"></div></div>
+                <div class="form-row"><div class="form-group"><label class="form-label">退运保-KG</label><input type="number" id="cfg_insKg" step="0.01" value="1"></div><div class="form-group"><label class="form-label">利润-CBM</label><input type="number" id="cfg_pfCbm" step="0.01" value="0"></div></div>
+                <div class="form-row"><div class="form-group"><label class="form-label">利润-KG</label><input type="number" id="cfg_pfKg" step="0.01" value="0"></div><div class="form-group"></div></div>
+                <div class="section-title">📦 条件附加费</div>
+                <div class="form-row"><div class="form-group"><label class="form-label">尾板(USD)</label><input type="number" id="cfg_lift" step="0.01" value="100"></div><div class="form-group"><label class="form-label">限制地址(USD)</label><input type="number" id="cfg_restr" step="0.01" value="200"></div></div>
+                <div class="form-row"><div class="form-group"><label class="form-label">监管仓-CBM(RMB)</label><input type="number" id="cfg_bondedCbm" step="0.01" value="50"></div><div class="form-group"><label class="form-label">监管仓-KG(RMB)</label><input type="number" id="cfg_bondedKg" step="0.01" value="0.3"></div></div>
+                <div class="section-title">🔄 转运费</div>
+                <div class="form-row"><div class="form-group"><label class="form-label">SAV(USD/CBM)</label><input type="number" id="cfg_trSav" step="0.01" value="80"></div><div class="form-group"><label class="form-label">NY(USD/CBM)</label><input type="number" id="cfg_trNy" step="0.01" value="90"></div></div>
+                <div class="section-title">📝 业务员备注模版</div>
+                <div class="form-group"><textarea id="cfg_staffRemark"></textarea></div>
+            </div>
+            <div class="modal-footer"><button class="btn" onclick="closeModal('configModal')">关闭</button><button class="btn btn-primary" onclick="saveCfg();closeModal('configModal');">保存</button></div>
+        </div>
+    </div>
+    <div class="modal-overlay" id="freightModal" style="display:none;">
+        <div class="modal" style="width:800px;">
+            <div class="modal-header">📅 头程周次表 <button class="modal-close" onclick="closeModal('freightModal')">&times;</button></div>
+            <div class="modal-body">
+                <div style="margin-bottom:10px;"><button class="btn btn-sm" onclick="document.getElementById('freightFileInput').click()">📥 导入Excel</button><span style="font-size:0.73rem;color:var(--text-secondary);"> 周次|HCM-CBM|HCM-KG|HPH-CBM|HPH-KG</span><input type="file" id="freightFileInput" accept=".xlsx,.xls" style="display:none;" onchange="handleFreightFile(event)"><button class="btn btn-sm btn-danger" onclick="clearFreight()" style="margin-left:8px;">清空</button></div>
+                <div style="max-height:350px;overflow-y:auto;"><table class="mini-table" id="freightTable"><thead><tr><th>周次</th><th>HCM-CBM</th><th>HCM-KG</th><th>HPH-CBM</th><th>HPH-KG</th><th>操作</th></tr></thead><tbody></tbody></table></div>
+            </div>
+            <div class="modal-footer"><button class="btn" onclick="closeModal('freightModal')">关闭</button></div>
+        </div>
+    </div>
+    <div class="modal-overlay" id="rateModal" style="display:none;">
+        <div class="modal wide">
+            <div class="modal-header">📊 盈仓报价表 <button class="modal-close" onclick="closeModal('rateModal')">&times;</button></div>
+            <div class="modal-body">
+                <div style="margin-bottom:10px;"><button class="btn btn-sm" onclick="document.getElementById('rateFileInput').click()">📥 导入Excel</button><span style="font-size:0.73rem;color:var(--text-secondary);"> 文件名含LA/SAV/NY</span><input type="file" id="rateFileInput" accept=".xlsx,.xls" style="display:none;" onchange="handleRateFile(event)"></div>
+                <div id="importProgress" style="display:none;margin-bottom:8px;"><span id="importStatus"></span><div class="progress-bar"><div class="fill" id="progressFill" style="width:0%;"></div></div></div>
+                <div class="tab-nav"><button class="tab-btn active" onclick="switchRateTab('LA')">📍 LA <span id="laCount"></span></button><button class="tab-btn" onclick="switchRateTab('SAV')">🔄 SAV <span id="savCount"></span></button><button class="tab-btn" onclick="switchRateTab('NY')">🔄 NY <span id="nyCount"></span></button></div>
+                <div style="max-height:350px;overflow-y:auto;"><table class="mini-table" id="rateTable"><thead><tr><th>邮编</th><th>州-分区</th><th>1-5板</th><th>6-12板</th><th id="h5">13-28板</th><th id="h6">包车</th><th id="h7" style="display:none;"></th></tr></thead><tbody></tbody></table></div>
+            </div>
+            <div class="modal-footer"><button class="btn btn-danger btn-sm" onclick="clearAllRates()">🗑 清空</button><button class="btn" onclick="closeModal('rateModal')">关闭</button></div>
+        </div>
+    </div>
+    <div class="toast" id="toast" style="display:none;"></div>
+
+    <script>
+        const DB_NAME = 'LogisticsDB_v51';
+        let db = null;
+        const DEFAULT_PWD = 'admin123';
+        const MIN_CBM = 2;
+        const MIN_KG = 334;
+        const S = {
+            'LA': { n: 6, f4: 'p1328', f5: 'tk', f6: null, h5: '13-28板', h6: '包车', h7: null },
+            'SAV': { n: 7, f4: 'p1318', f5: 'tk12', f6: 'tk28', h5: '13-18板', h6: '包车12板', h7: '包车28板' },
+            'NY': { n: 6, f4: 'p1318', f5: 'tk28', f6: null, h5: '13-18板', h6: '包车28板', h7: null },
+        };
+        let isAdmin = false;
+        let curTab = 'LA';
+        let ratesCache = { 'LA': [], 'SAV': [], 'NY': [] };
+        let freightCache = [];
+        let cfgCache = { exRate: 7, insCbm: 200, insKg: 1, pfCbm: 0, pfKg: 0, lift: 100, restr: 200, bondedCbm: 50,
+            bondedKg: 0.3, trSav: 80, trNy: 90, staffRemark: '' };
+        let syncReady = false;
+
+        function v(id) { return document.getElementById(id).value; }
+
+        function showToast(m, t) { const el = document.getElementById('toast');
+            el.textContent = m;
+            el.style.display = 'block';
+            clearTimeout(el._t);
+            el._t = setTimeout(() => el.style.display = 'none', t || 3000); }
+
+        function openModal(id) { document.getElementById(id).style.display = 'flex'; if (id === 'configModal')
+                loadCfgForm(); if (id === 'rateModal') { curTab = 'LA';
+                switchRateTab('LA'); } if (id === 'freightModal') loadFreightTable(); }
+
+        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+        document.addEventListener('click', e => { if (e.target.classList.contains('modal-overlay')) e.target.style.display =
+                'none'; });
+
+        function setSyncStatus(status) { const el = document.getElementById('syncStatus');
+            el.className = 'sync-status ' + status; if (status === 'synced') el.textContent = '✅ 已同步'; else if (status ===
+                'syncing') el.textContent = '🔄 同步中...'; else el.textContent = '⚠ 离线模式'; }
+
+        // ============ IndexedDB ============
+        function openDB() { return new Promise((resolve, reject) => { const r = indexedDB.open(DB_NAME, 1);
+                r.onupgradeneeded = function(e) { const d = e.target.result; if (!d.objectStoreNames.contains('rates'))
+                        d.createObjectStore('rates', { keyPath: 'region' }); if (!d.objectStoreNames.contains('config'))
+                        d.createObjectStore('config', { keyPath: 'id' }); if (!d.objectStoreNames.contains('freight'))
+                        d.createObjectStore('freight', { keyPath: 'id' }); if (!d.objectStoreNames.contains('settings'))
+                        d.createObjectStore('settings', { keyPath: 'key' }); };
+                r.onsuccess = function(e) { db = e.target.result;
+                    resolve(db); };
+                r.onerror = function(e) { reject(e); }; }); }
+
+        function dbPut(s, d) { return new Promise((r, j) => { const t = db.transaction(s, 'readwrite');
+                t.objectStore(s).put(d);
+                t.oncomplete = r;
+                t.onerror = j; }); }
+
+        function dbGet(s, k) { return new Promise((r, j) => { const t = db.transaction(s, 'readonly'); const q = t.objectStore(
+                    s).get(k);
+                q.onsuccess = () => r(q.result);
+                q.onerror = j; }); }
+
+        function dbDelete(s, k) { return new Promise((r, j) => { const t = db.transaction(s, 'readwrite');
+                t.objectStore(s).delete(k);
+                t.oncomplete = r;
+                t.onerror = j; }); }
+
+        // ============ 从GitHub同步数据 ============
+        async function syncFromGitHub() {
+            if (!DATA_URL || DATA_URL.includes('你的用户名')) {
+                setSyncStatus('error');
+                console.warn('DATA_URL未配置，使用本地数据');
+                syncReady = true;
+                return;
+            }
+            setSyncStatus('syncing');
+            try {
+                const response = await fetch(DATA_URL, { cache: 'no-cache' });
+                if (!response.ok) throw new Error('HTTP ' + response.status);
+                const data = await response.json();
+                if (data.version !== '5.0' && data.version !== '5.1') { throw new Error('版本不兼容'); }
+                if (data.config) { cfgCache = { ...cfgCache, ...data.config };
+                    await dbPut('config', { id: 'main', data: cfgCache }); }
+                if (data.freight && data.freight.length > 0) { freightCache = data.freight;
+                    await dbPut('freight', { id: 'main', data: freightCache }); }
+                if (data.rates) { for (const r of ['LA', 'SAV', 'NY']) { if (data.rates[r]) { ratesCache[r] = data.rates[r];
+                                await dbPut('rates', { region: r, data: data.rates[r] }); } } }
+                updateWeekSelect();
+                updateTabCounts();
+                setSyncStatus('synced');
+                syncReady = true;
+                console.log('✅ 从GitHub同步成功 | LA:' + ratesCache['LA'].length + ' SAV:' + ratesCache['SAV'].length +
+                    ' NY:' + ratesCache['NY'].length + ' 周次:' + freightCache.length);
+            } catch (er) {
+                setSyncStatus('error');
+                syncReady = true;
+                console.warn('⚠ GitHub同步失败，使用本地缓存:', er.message);
+                showToast('⚠ 在线同步失败，使用本地缓存数据');
+            }
+        }
+
+        async function exportForGitHub() {
+            const allRates = {};
+            for (const r of ['LA', 'SAV', 'NY']) allRates[r] = getRates(r);
+            const data = { version: '5.1', exportTime: new Date().toISOString(), config: cfgCache, freight: freightCache,
+                rates: allRates };
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'data.json';
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast('✅ data.json已导出，请上传到GitHub替换旧文件');
+        }
+
+        // ============ 权限 ============
+        async function getAdminPwd() { const r = await dbGet('settings', 'adminPwd'); return r ? r.value : DEFAULT_PWD; }
+
+        async function setAdminPwd(p) { await dbPut('settings', { key: 'adminPwd', value: p }); }
+
+        function showAdminLogin() { if (isAdmin) return;
+            document.getElementById('loginPwd').value = '';
+            document.getElementById('loginError').style.display = 'none';
+            openModal('loginModal');
+            setTimeout(() => document.getElementById('loginPwd').focus(), 200); }
+
+        async function adminLogin() { const p = document.getElementById('loginPwd').value; if (p === await getAdminPwd()) { isAdmin =
+                    true;
+                updateUI();
+                closeModal('loginModal');
+                showToast('✅ 管理员登录成功'); } else { document.getElementById('loginError').style.display = 'block'; } }
+
+        function logoutAdmin() { isAdmin = false;
+            updateUI();
+            showToast('已退出'); }
+
+        async function changePassword() { const o = document.getElementById('oldPwd').value; const n = document.getElementById(
+                'newPwd').value; const c = document.getElementById('confirmPwd').value; const e = document.getElementById(
+                'pwdError'); if (o !== await getAdminPwd()) { e.textContent = '当前密码错误';
+            e.style.display = 'block'; return; } if (n.length < 4) { e.textContent = '至少4位';
+            e.style.display = 'block'; return; } if (n !== c) { e.textContent = '不一致';
+            e.style.display = 'block'; return; } await setAdminPwd(n);
+            e.style.display = 'none';
+            closeModal('pwdModal');
+            showToast('✅ 密码已修改'); }
+
+        function updateUI() { document.getElementById('roleBadge').textContent = isAdmin ? '🔓 管理员' : '🔒 业务员';
+            document.getElementById('roleBadge').className = 'role-badge ' + (isAdmin ? 'admin' : 'staff');
+            document.getElementById('adminSection').style.display = isAdmin ? 'block' : 'none';
+            document.getElementById('adminBtn').textContent = isAdmin ? '🔒 已登录' : '🔑 管理员';
+            document.getElementById('adminBtn').onclick = isAdmin ? logoutAdmin : showAdminLogin; if (!isAdmin) document
+                .getElementById('analysisCard').style.display = 'none'; }
+
+        function updateWeekSelect() { const s = document.getElementById('weekSelect'); if (freightCache.length === 0) { s
+                .innerHTML = '<option value="">无周次数据</option>'; } else { s.innerHTML = freightCache.map((f, i) =>
+                `<option value="${i}" ${i===freightCache.length-1?'selected':''}>${f.week}</option>`).join(''); } }
+
+        // ============ 配置 ============
+        function loadCfgForm() { const c = cfgCache;
+            document.getElementById('cfg_exRate').value = c.exRate;
+            document.getElementById('cfg_insCbm').value = c.insCbm;
+            document.getElementById('cfg_insKg').value = c.insKg;
+            document.getElementById('cfg_pfCbm').value = c.pfCbm;
+            document.getElementById('cfg_pfKg').value = c.pfKg;
+            document.getElementById('cfg_lift').value = c.lift;
+            document.getElementById('cfg_restr').value = c.restr;
+            document.getElementById('cfg_bondedCbm').value = c.bondedCbm;
+            document.getElementById('cfg_bondedKg').value = c.bondedKg;
+            document.getElementById('cfg_trSav').value = c.trSav;
+            document.getElementById('cfg_trNy').value = c.trNy;
+            document.getElementById('cfg_staffRemark').value = c.staffRemark || ''; }
+
+        async function saveCfg() { cfgCache = { exRate: +v('cfg_exRate'), insCbm: +v('cfg_insCbm'), insKg: +v('cfg_insKg'),
+                pfCbm: +v('cfg_pfCbm'), pfKg: +v('cfg_pfKg'), lift: +v('cfg_lift'), restr: +v('cfg_restr'), bondedCbm: +
+                v('cfg_bondedCbm'), bondedKg: +v('cfg_bondedKg'), trSav: +v('cfg_trSav'), trNy: +v('cfg_trNy'),
+                staffRemark: v('cfg_staffRemark') };
+            await dbPut('config', { id: 'main', data: cfgCache });
+            showToast('✅ 已保存'); }
+
+        // ============ 头程 ============
+        function loadFreightTable() { document.querySelector('#freightTable tbody').innerHTML = freightCache.map((f, i) =>
+                `<tr><td>${f.week}</td><td>${f.hcmCbm}</td><td>${f.hcmKg}</td><td>${f.hphCbm}</td><td>${f.hphKg}</td><td><button class="btn btn-xs btn-danger" onclick="deleteFreight(${i})">删</button></td></tr>`
+            ).join(''); }
+
+        async function handleFreightFile(e) { const f = e.target.files[0]; if (!f) return; const r = new FileReader();
+            r.onload = async function(ev) { try { const w = XLSX.read(new Uint8Array(ev.target.result), { type: 'array' });
+                    const rows = XLSX.utils.sheet_to_json(w.Sheets[w.SheetNames[0]], { header: 1 }); const d = []; for (let i =
+                        0; i < rows.length; i++) { const row = rows[i]; if (!row || row.length < 5) continue; const fc =
+                        String(row[0] || '').trim(); if (fc === '周次' || fc === '' || fc === 'week') continue;
+                    d.push({ week: fc, hcmCbm: +row[1] || 0, hcmKg: +row[2] || 0, hphCbm: +row[3] || 0, hphKg: +row[4] ||
+                        0 }); } if (d.length > 0) { freightCache = d;
+                        await dbPut('freight', { id: 'main', data: d });
+                        loadFreightTable();
+                        updateWeekSelect();
+                        showToast('✅ ' + d.length + ' 周'); } else showToast('⚠ 无数据'); } catch (er) { showToast('❌ 解析失败'); } };
+            r.readAsArrayBuffer(f);
+            e.target.value = ''; }
+
+        async function deleteFreight(i) { freightCache.splice(i, 1);
+            await dbPut('freight', { id: 'main', data: freightCache });
+            loadFreightTable();
+            updateWeekSelect();
+            showToast('已删除'); }
+
+        async function clearFreight() { if (!confirm('确定清空？')) return;
+            freightCache = [];
+            await dbPut('freight', { id: 'main', data: [] });
+            loadFreightTable();
+            updateWeekSelect();
+            showToast('已清空'); }
+
+        // ============ 盈仓报价表 ============
+        async function loadRatesToCache(r) { const d = await dbGet('rates', r);
+            ratesCache[r] = d ? d.data : []; return ratesCache[r]; }
+
+        async function loadAllRatesToCache() { for (const r of ['LA', 'SAV', 'NY']) await loadRatesToCache(r);
+        updateTabCounts(); }
+
+        function getRates(r) { return ratesCache[r] || []; }
+
+        async function saveRatesToDB(r, d) { ratesCache[r] = d;
+            await dbPut('rates', { region: r, data: d });
+            updateTabCounts(); }
+
+        function updateTabCounts() { ['LA', 'SAV', 'NY'].forEach(r => { const e = document.getElementById(r.toLowerCase() +
+                    'Count'); if (e) e.textContent = '(' + ratesCache[r].length + '条)'; }); }
+
+        function switchRateTab(r) { curTab = r;
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            Array.from(document.querySelectorAll('.tab-btn')).find(b => b.textContent.includes(r))?.classList.add(
+            'active'); const sc = S[r];
+            document.getElementById('h5').textContent = sc.h5;
+            document.getElementById('h6').textContent = sc.h6;
+            document.getElementById('h6').style.display = '';
+            document.getElementById('h7').style.display = sc.h7 ? '' : 'none'; if (sc.h7) document.getElementById('h7')
+                .textContent = sc.h7;
+            loadRateTable(r); }
+
+        function loadRateTable(r) { const rates = getRates(r); const sc = S[r];
+            document.querySelector('#rateTable tbody').innerHTML = rates.slice(0, 100).map(d => { let row =
+                    `<tr><td>${d.zip||''}</td><td>${d.sz||''}</td><td>${d.p15||0}</td><td>${d.p612||0}</td><td>${d[sc.f4]||0}</td><td>${d[sc.f5]||0}</td>`;
+                    if (sc.f6) row += `<td>${d[sc.f6]||0}</td>`;
+                    row += '</tr>'; return row; }).join(''); if (rates.length > 100) document.querySelector(
+                    '#rateTable tbody').innerHTML +=
+                `<tr><td colspan="${sc.f6?7:6}" style="color:var(--text-secondary);font-size:0.7rem;">...还有${rates.length-100}条</td></tr>`; }
+
+        function handleRateFile(e) { const f = e.target.files[0]; if (!f) return; const fn = f.name.toUpperCase(); let tr =
+                null; if (fn.includes('LA')) tr = 'LA'; else if (fn.includes('SAV')) tr = 'SAV'; else if (fn.includes('NY'))
+                tr = 'NY'; if (!tr) { showToast('⚠ 文件名需含LA/SAV/NY');
+            e.target.value = ''; return; } const pd = document.getElementById('importProgress'); const ps = document
+                .getElementById('importStatus'); const pf = document.getElementById('progressFill');
+            pd.style.display = 'block';
+            ps.textContent = '读取中...';
+            pf.style.width = '20%'; const r = new FileReader();
+            r.onload = async function(ev) { try { ps.textContent = '解析中...';
+            pf.style.width = '40%'; const w = XLSX.read(new Uint8Array(ev.target.result), { type: 'array' }); const rows =
+                    XLSX.utils.sheet_to_json(w.Sheets[w.SheetNames[0]], { header: 1 });
+                ps.textContent = rows.length + '行...';
+                pf.style.width = '60%'; const sc = S[tr]; const d = []; for (let i = 0; i < rows.length; i++) { const row =
+                        rows[i]; if (!row || row.length === 0) continue; const fc = String(row[0] || '').trim(); if (fc ===
+                        '目的地邮编' || fc === '邮编' || fc === 'ZIP' || fc === '') continue; if (!/^\d/.test(fc))
+                    continue; if (row.length < sc.n) continue; const o = { zip: fc, sz: String(row[1] || '').trim(), p15: +
+                        row[2] || 0, p612: +row[3] || 0 };
+                    o[sc.f4] = +row[4] || 0;
+                    o[sc.f5] = +row[5] || 0; if (sc.f6) o[sc.f6] = +row[6] || 0;
+                    d.push(o); }
+                ps.textContent = '保存中...';
+                pf.style.width = '80%';
+                await saveRatesToDB(tr, d);
+                pf.style.width = '100%';
+                ps.textContent = '✅ ' + tr + ' ' + d.length + '条';
+                curTab = tr;
+                switchRateTab(tr);
+                showToast('✅ ' + tr + ' ' + d.length + '条'); } catch (er) { ps.textContent = '❌ 失败';
+                showToast('❌ 失败'); }
+            setTimeout(() => pd.style.display = 'none', 2000); };
+            r.onerror = function() { pd.style.display = 'none';
+                showToast('❌ 读取失败'); };
+            r.readAsArrayBuffer(f);
+            e.target.value = ''; }
+
+        async function clearAllRates() { if (!confirm('确定清空？')) return; for (const r of ['LA', 'SAV', 'NY']) { ratesCache[r] =
+                    [];
+                await dbDelete('rates', r); }
+            updateTabCounts();
+            loadRateTable(curTab);
+            showToast('已清空'); }
+
+        function queryRegion(z, p, r) { const e = getRates(r).find(x => x.zip === z); if (!e) return null; const sc = S[r]; let f =
+                (r === 'LA') ? (p <= 5 ? e.p15 : p <= 12 ? e.p612 : e.p1328) : (p <= 5 ? e.p15 : p <= 12 ? e.p612 : e.p1318);
+            let t = (r === 'LA') ? (e.tk || 0) : (r === 'SAV') ? (p <= 12 ? (e.tk12 || 0) : (e.tk28 || 0)) : (e.tk28 || 0);
+            return { region: r, fpp: f, tk: t, sz: e.sz || '' }; }
+
+        function calcDC(p, f, t) { let c = p * f; const u = p >= 9 && t > 0 && t < c; return { plates: p, cost: u ? t : c,
+                rawCost: c, useTk: u, tkCost: t }; }
+
+        // ============ 货物类型 ============
+        function autoCalc() { clearTimeout(autoCalc._t);
+            autoCalc._t = setTimeout(() => calculateAll(true), 300); }
+
+        function onCargoTypeChange() { const t = v('cargoType');
+            document.getElementById('palletDetailArea').style.display = t === 'pallet' ? 'block' : 'none';
+            document.getElementById('oversizeCard').style.display = (t === 'oversize' || t === 'overweight') ? 'block' :
+                'none';
+            autoCalc(); }
+
+        function addPalletRow() { const d = document.createElement('div');
+            d.className = 'form-row';
+            d.style.marginBottom = '4px';
+            d.innerHTML =
+                '<input type="number" placeholder="长cm" class="pallet-l" step="0.1" style="flex:1"><input type="number" placeholder="宽cm" class="pallet-w" step="0.1" style="flex:1"><input type="number" placeholder="高cm" class="pallet-h" step="0.1" style="flex:1"><input type="number" placeholder="数量" class="pallet-qty" value="1" min="1" style="flex:0.8"><button class="btn btn-xs btn-danger" onclick="this.closest(\'.form-row\').remove();autoCalc();" style="flex:0.3">✕</button>';
+            document.getElementById('palletItems').appendChild(d); }
+
+        function addOversizeRow() { const d = document.createElement('div');
+            d.className = 'form-row';
+            d.style.marginBottom = '6px';
+            d.innerHTML =
+                '<input type="number" placeholder="长M" step="0.01" class="os-l" style="flex:1"><input type="number" placeholder="宽M" step="0.01" class="os-w" style="flex:1"><input type="number" placeholder="高M" step="0.01" class="os-h" style="flex:1"><input type="number" placeholder="实重KG" step="0.1" class="os-wt" style="flex:1"><input type="number" placeholder="数量" value="1" class="os-qty" style="flex:0.8"><button class="btn btn-xs btn-danger" onclick="this.closest(\'.form-row\').remove();autoCalc();" style="flex:0.3">✕</button>';
+            document.getElementById('oversizeItems').appendChild(d); }
+
+        // ============ 核心计算 ============
+        function calculateAll(silent) { const cfg = cfgCache; const ci = +v('cbm') || 0; const wi = +v('weight') || 0; const zip =
+                v('zipcode').trim(); const wh = v('warehouse'); const at = v('addressType'); const ct = v('clientType'); const
+                ir = document.getElementById('isRestricted').value === 'yes'; const ub = document.getElementById('useBonded')
+                .value === 'yes'; const cgt = v('cargoType'); const wiIdx = v('weekSelect'); if (!zip || (!ci && !wi && cgt ===
+                    'standard')) { if (!silent) showToast('⚠ 请填写信息'); return; } if (wiIdx === '') { if (!silent) showToast(
+                    '⚠ 无周次数据'); return; } const fr = freightCache[parseInt(wiIdx)]; if (!fr) { showToast('⚠ 数据异常'); return; } if (
+                cgt === 'oversize' || cgt === 'overweight') { for (const row of document.querySelectorAll(
+                        '#oversizeItems .form-row')) { if (Math.max(+row.querySelector('.os-l')?.value || 0, +row
+                        .querySelector('.os-w')?.value || 0, +row.querySelector('.os-h')?.value || 0) > 2.4 || (+row
+                        .querySelector('.os-wt')?.value || 0) > 900) { document.getElementById('resultBody').innerHTML =
+                            '<div style="text-align:center;padding:20px;color:#d93025;">⚠ 超规格，需人工询价</div>';
+                document.getElementById('analysisCard').style.display = 'none'; return; } } } let fc = ci,
+                fw = wi; if (cgt === 'standard') { fw = Math.max(wi, ci * 167);
+                fc = Math.max(ci, fw / 363); if (fc < MIN_CBM) fc = MIN_CBM; if (fw < MIN_KG) fw = MIN_KG; } else if (cgt ===
+                'pallet') { let cc = 0;
+                document.querySelectorAll('#palletItems .form-row').forEach(r => cc += ((+r.querySelector('.pallet-l')
+                    ?.value || 0) / 100) * ((+r.querySelector('.pallet-w')?.value || 0) / 100) * ((+r.querySelector(
+                    '.pallet-h')?.value || 0) / 100) * (+r.querySelector('.pallet-qty')?.value || 0)); if (cc > 0) fc =
+                    cc;
+                fw = Math.max(wi, fc * 167);
+                fc = Math.max(fc, fw / 363); if (fc < MIN_CBM) fc = MIN_CBM; if (fw < MIN_KG) fw = MIN_KG; } else { let tc =
+                    0,
+                    tw = 0;
+                document.querySelectorAll('#oversizeItems .form-row').forEach(r => { const l = +r.querySelector('.os-l')
+                        ?.value || 0,
+                        w = +r.querySelector('.os-w')?.value || 0,
+                        h = +r.querySelector('.os-h')?.value || 0,
+                        wt = +r.querySelector('.os-wt')?.value || 0,
+                        q = +r.querySelector('.os-qty')?.value || 0;
+                    tc += l * w * h * q;
+                    tw += wt * q; });
+                fc = Math.max(tc, ci);
+                fw = Math.max(tw, wi);
+                fw = Math.max(fw, fc * 167);
+                fc = Math.max(fc, fw / 363); if (fc < MIN_CBM) fc = MIN_CBM; if (fw < MIN_KG) fw = MIN_KG; } let tp = Math.max(
+                Math.ceil(fc / 2), Math.ceil(fw / 500), 1); let oep = 0; if (cgt === 'oversize' || cgt === 'overweight') {
+                document.querySelectorAll('#oversizeItems .form-row').forEach(r => { const l = +r.querySelector('.os-l')
+                        ?.value || 0,
+                        w = +r.querySelector('.os-w')?.value || 0,
+                        h = +r.querySelector('.os-h')?.value || 0,
+                        wt = +r.querySelector('.os-wt')?.value || 0,
+                        q = +r.querySelector('.os-qty')?.value || 0; if (l > 1.2 || w > 1 || h > 1.8 || wt > 500) oep +=
+                        Math.max(Math.ceil(l * w * h / 2) * q, Math.ceil(wt / 500) * q); });
+                tp = Math.max(tp, oep * 2); } const laI = queryRegion(zip, tp, 'LA'); if (!laI) { document.getElementById(
+                    'resultBody').innerHTML = '<p style="color:#d93025;">⚠ 未找到邮编' + zip + '</p>';
+                document.getElementById('analysisCard').style.display = 'none'; return; } const savI = queryRegion(zip, tp,
+                    'SAV'); const nyI = queryRegion(zip, tp, 'NY'); const trR = savI ? 'SAV' : (nyI ? 'NY' : null); const trI =
+                savI || nyI; const trF = savI ? cfg.trSav : (nyI ? cfg.trNy : 0); const laC = calcDC(tp, laI.fpp, laI.tk); let
+                laDU = laC.cost; if (at !== 'commercial_dock') laDU += cfg.lift; if (ir) laDU += cfg.restr; let trC = null,
+                trDU = Infinity; if (trR && trI) { trC = calcDC(tp, trI.fpp, trI.tk);
+                trDU = trC.cost + fc * trF; if (at !== 'commercial_dock') trDU += cfg.lift; if (ir) trDU += cfg.restr; } const
+                useTr = trDU < laDU; const delU = useTr ? trDU : laDU; const chR = useTr ? trR : 'LA'; const chC = useTr ? trC :
+                laC; const delR = delU * cfg.exRate; const dpc = Math.ceil(delR / fc); const dpk = Math.round(delR / fw * 10) /
+                10; const flC = wh === 'HPH' ? fr.hphCbm : fr.hcmCbm; const flK = wh === 'HPH' ? fr.hphKg : fr.hcmKg; const cmc =
+                ct === 'direct' ? 100 : 50; const cmk = ct === 'direct' ? 0.5 : 0.3; let fpc = dpc + flC + cfg.insCbm + cmc +
+                cfg.pfCbm; let fpk = dpk + flK + cfg.insKg + cmk + cfg.pfKg; if (ub) { fpc += cfg.bondedCbm;
+                fpk += cfg.bondedKg; } let rH = ''; if (isAdmin) { rH = `
+                <div class="result-item"><span class="result-label">📦 计费</span><span class="result-value">${fc.toFixed(2)}CBM / ${fw.toFixed(1)}KG</span></div>
+                <div class="result-item"><span class="result-label">🔢 板数</span><span class="result-value">${tp}板 | ${chR}${chC.useTk?'(包车)':''}</span></div>
+                <div class="result-item"><span class="result-label">💵 派送费(USD)</span><span class="result-value">$${delU.toFixed(2)}</span></div>
+                <div class="result-item"><span class="result-label">💴 派送费(RMB)</span><span class="result-value">¥${delR.toFixed(2)}</span></div>
+                <div class="divider"></div>
+                <div class="result-item"><span class="result-label">📐 派送单价</span><span class="result-value">${dpc} / ${dpk}</span></div>
+                <div class="result-item"><span class="result-label">✈️ 头程(${wh})</span><span class="result-value">${flC} / ${flK}</span></div>
+                <div class="result-item"><span class="result-label">🛡 退运保</span><span class="result-value">${cfg.insCbm} / ${cfg.insKg}</span></div>
+                <div class="result-item"><span class="result-label">💰 提成</span><span class="result-value">${cmc} / ${cmk}</span></div>
+                ${cfg.pfCbm||cfg.pfKg?`<div class="result-item"><span class="result-label">📈 利润</span><span class="result-value">${cfg.pfCbm} / ${cfg.pfKg}</span></div>`:''}
+                ${ub?`<div class="result-item"><span class="result-label">🏭 监管仓</span><span class="result-value">${cfg.bondedCbm} / ${cfg.bondedKg}</span></div>`:''}
+                <div class="divider"></div>
+                <div class="highlight-box"><div class="final-price">${fpc} RMB/CBM</div><div class="final-price">${fpk} RMB/KG</div></div>`; } else { rH = `
+                <div class="highlight-box" style="text-align:center;">
+                    <div style="font-size:0.85rem;color:#5f6368;margin-bottom:8px;">🏷️ 最终报价 (${fr.week})</div>
+                    <div class="final-price">${fpc} RMB/CBM</div>
+                    <div class="final-price">${fpk} RMB/KG</div>
+                </div>`; }
+            document.getElementById('resultBody').innerHTML = rH; if (isAdmin) { const lDR = laDU * cfg.exRate; const lDpc =
+                    Math.ceil(lDR / fc); const lDpk = Math.round(lDR / fw * 10) / 10; const lFpc = lDpc + flC + cfg.insCbm +
+                    cmc + cfg.pfCbm + (ub ? cfg.bondedCbm : 0); const lFpk = lDpk + flK + cfg.insKg + cmk + cfg.pfKg + (ub ?
+                        cfg.bondedKg : 0); let ah = '';
+                ah +=
+                    `<div class="option-row"><span>📍 <strong>A:LA直送</strong></span><span class="${useTr?'loser':'winner'}">${lFpc}CBM / ${lFpk}KG</span></div>`;
+                ah +=
+                    `<div style="font-size:0.72rem;color:var(--text-secondary);margin-left:12px;">${tp}板×$${laI.fpp}=$${laC.rawCost.toFixed(2)}${laC.useTk?'→包车$'+laC.tkCost.toFixed(2):''} → $${laDU.toFixed(2)}×${cfg.exRate}=¥${lDR.toFixed(2)}</div>`;
+                ah +=
+                    `<div style="font-size:0.72rem;color:var(--text-secondary);margin-left:12px;">+头程${flC}/${flK} +退运保${cfg.insCbm}/${cfg.insKg} +提成${cmc}/${cmk}${ub?' +监管仓'+cfg.bondedCbm+'/'+cfg.bondedKg:''}</div>`;
+                if (trR) { const tDR = trDU * cfg.exRate; const tDpc = Math.ceil(tDR / fc); const tDpk = Math.round(tDR / fw *
+                        10) / 10; const tFpc = tDpc + flC + cfg.insCbm + cmc + cfg.pfCbm + (ub ? cfg.bondedCbm : 0); const
+                        tFpk = tDpk + flK + cfg.insKg + cmk + cfg.pfKg + (ub ? cfg.bondedKg : 0);
+                    ah +=
+                        `<div class="option-row" style="margin-top:6px;"><span>🔄 <strong>B:${trR}转运</strong></span><span class="${useTr?'winner':'loser'}">${tFpc}CBM / ${tFpk}KG</span></div>`;
+                    ah +=
+                        `<div style="font-size:0.72rem;color:var(--text-secondary);margin-left:12px;">${tp}板×$${trI.fpp}=$${trC.rawCost.toFixed(2)}+转运${fc.toFixed(2)}×$${trF}=$${trDU.toFixed(2)}×${cfg.exRate}=¥${tDR.toFixed(2)}</div>`;
+                    ah +=
+                        `<div style="font-size:0.72rem;color:var(--text-secondary);margin-left:12px;">+头程${flC}/${flK} +退运保${cfg.insCbm}/${cfg.insKg} +提成${cmc}/${cmk}${ub?' +监管仓'+cfg.bondedCbm+'/'+cfg.bondedKg:''}</div>`; } else ah +=
+                    `<div style="margin-top:6px;font-size:0.78rem;color:var(--text-secondary);">🔹 无转运</div>`;
+                ah +=
+                    `<div style="margin-top:6px;font-weight:700;color:#1565c0;">✅ 选用：${useTr?trR+'转运':'LA直送'} → ${fpc}RMB/CBM | ${fpk}RMB/KG</div>`;
+                document.getElementById('analysisBody').innerHTML = ah;
+                document.getElementById('analysisCard').style.display = 'block'; } else document.getElementById(
+                'analysisCard').style.display = 'none'; const zf = zip.charAt(0); const zn = ['7', '8', '9'].includes(zf) ?
+                '美西' : ['4', '5', '6'].includes(zf) ? '美中' : ['0', '1', '2', '3'].includes(zf) ? '美东' : '未知'; let td = wh ===
+                'HPH' ? (zn === '美西' ? 26 : zn === '美中' ? 30 : 33) : (zn === '美西' ? 29 : zn === '美中' ? 33 : 36); if (ub) td +=
+                3;
+            document.getElementById('transitTime').innerHTML =
+                `<p>📍 ${wh} → ${zn} (${zip})${ub?' → 监管仓':''}</p><p style="font-size:1.2rem;font-weight:600;color:var(--primary);">⏱ ${td}天左右${ub?' (含+3天)':''}</p>`;
+            let rm = []; if (isAdmin) { if (at === 'commercial_dock') rm.push('不含尾板，需卸货台，53尺大车'); else rm.push('含尾板$' +
+                    cfg.lift); if (ir) rm.push('限制地址$' + cfg.restr); if (ub) rm.push('监管仓¥' + cfg.bondedCbm + '/' + cfg
+                    .bondedKg + '，时效+3天'); if (useTr) rm.push(trR + '转运'); if (chC.useTk) rm.push('包车$' + chC.tkCost
+                    .toFixed(2)); if (ci > 0 && ci < MIN_CBM) rm.push('⚠ 不足' + MIN_CBM + 'CBM，已按最低'); if (wi > 0 && wi <
+                    MIN_KG) rm.push('⚠ 不足' + MIN_KG + 'KG，已按最低'); } if (cfg.staffRemark && cfg.staffRemark.trim()) rm.push(
+                cfg.staffRemark.trim());
+            document.getElementById('remarkArea').innerHTML = rm.length ? '<div class="remark-box">' + rm.join('\n') +
+                '</div>' : '<p>--</p>'; }
+
+        // ============ 导出 ============
+        async function buildExportData() { const ar = {}; for (const r of ['LA', 'SAV', 'NY']) ar[r] = getRates(r); const p =
+                await getAdminPwd(); return { version: '5.1', exportTime: new Date().toISOString(), adminPwd: p,
+                config: cfgCache, freight: freightCache, rates: ar }; }
+
+        async function exportAllData() { const d = await buildExportData(); const b = new Blob([JSON.stringify(d, null, 2)],
+                { type: 'application/json' }); const u = URL.createObjectURL(b); const a = document.createElement('a');
+            a.href = u;
+            a.download = '物流报价系统_全部数据_' + new Date().toISOString().slice(0, 10) + '.json';
+            a.click();
+            URL.revokeObjectURL(u);
+            showToast('✅ 已导出'); }
+
+        async function importAllData(e) { const f = e.target.files[0]; if (!f) return; if (!confirm('导入将覆盖全部数据，确定？')) { e.target
+                .value = ''; return; } const r = new FileReader();
+            r.onload = async function(ev) { try { const d = JSON.parse(ev.target.result); if (d.version !== '5.1' && d
+                        .version !== '5.0') { showToast('⚠ 版本不兼容'); return; } if (d.adminPwd) await setAdminPwd(d
+                        .adminPwd); if (d.config) { cfgCache = { ...cfgCache, ...d.config };
+                    await dbPut('config', { id: 'main', data: cfgCache }); } if (d.freight) { freightCache = d.freight;
+                    await dbPut('freight', { id: 'main', data: freightCache });
+                    updateWeekSelect(); } if (d.rates) { for (const r of ['LA', 'SAV', 'NY']) { if (d.rates[r]) { ratesCache[
+                                r] = d.rates[r];
+                            await dbPut('rates', { region: r, data: d.rates[r] }); } }
+                    updateTabCounts(); }
+                showToast('✅ 已恢复'); } catch (er) { showToast('❌ 格式错误'); } };
+            r.readAsText(f);
+            e.target.value = ''; }
+
+        // ============ 初始化 ============
+        async function init() { await openDB(); const cfgR = await dbGet('config', 'main'); if (cfgR && cfgR.data) cfgCache =
+            { ...cfgCache, ...cfgR.data }; const frR = await dbGet('freight', 'main'); if (frR && frR.data && frR.data
+                .length > 0) freightCache = frR.data; await loadAllRatesToCache(); if (EMBEDDED_DATA) { try { const d =
+                    EMBEDDED_DATA; if (d.config) cfgCache = { ...cfgCache, ...d.config }; if (d.freight && d.freight
+                    .length > 0) freightCache = d.freight; if (d.rates) { for (const r of ['LA', 'SAV', 'NY']) { if (d
+                        .rates[r]) ratesCache[r] = d.rates[r]; } }
+                await dbPut('config', { id: 'main', data: cfgCache });
+                await dbPut('freight', { id: 'main', data: freightCache }); for (const r of ['LA', 'SAV', 'NY']) await
+                    dbPut('rates', { region: r, data: ratesCache[r] });
+                updateTabCounts();
+                console.log('✅ 嵌入数据已加载'); } catch (er) { console.warn('嵌入数据加载失败:', er); } } updateUI();
+            updateWeekSelect();
+            await syncFromGitHub();
+            updateWeekSelect();
+            updateTabCounts();
+            console.log('🚚 v5.1 就绪 | GitHub同步' + (DATA_URL && !DATA_URL.includes('你的用户名') ? '已配置' : '未配置') +
+                ' | LA:' + ratesCache['LA'].length + ' SAV:' + ratesCache['SAV'].length + ' NY:' + ratesCache['NY'].length +
+                ' 周次:' + freightCache.length); }
+        init();
+    </script>
+</body>
+</html>
